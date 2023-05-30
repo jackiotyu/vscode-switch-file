@@ -1,8 +1,17 @@
 {
+  "publisher": "jackiotyu",
   "name": "switch-file",
   "displayName": "Switch File",
   "description": "Quick switch previous/next file",
   "version": "0.0.1",
+  "icon": "images/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jackiotyu/vscode-switch-file.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jackiotyu/vscode-switch-file/issues"
+  },
   "engines": {
     "vscode": "^1.78.0"
   },
@@ -48,7 +57,7 @@
       "properties": {
         "switch-file.title": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "show/hide next file command in editor's title"
         }
       }

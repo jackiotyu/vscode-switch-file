@@ -4,7 +4,9 @@
 ## Quick switch previous/next file
 
 #### using command `Switch File`
-![preview](images/preview.gif)
+- open commandPalette and search `Switch File`.
+- ![preview](images/preview.gif)
 
 #### using switch button
-![switch-button](images/switch-button.png)
+- active by setting `"switch-file.title": true`.
+- ![switch-button](images/switch-button.png)
