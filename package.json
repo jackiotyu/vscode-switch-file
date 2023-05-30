@@ -1,0 +1,84 @@
+{
+  "name": "switch-file",
+  "displayName": "Switch File",
+  "description": "Quick switch previous/next file",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.78.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "switch-file.next",
+        "title": "Next file",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "switch-file.previous",
+        "title": "Previous file",
+        "icon": "$(arrow-left)"
+      },
+      {
+        "command": "switch-file.switchFile",
+        "title": "Switch file"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "switch-file.previous",
+          "when": "resourceScheme == file && config.switch-file.title == true",
+          "group": "navigation@-3"
+        },
+        {
+          "command": "switch-file.next",
+          "when": "resourceScheme == file && config.switch-file.title == true",
+          "group": "navigation@-2"
+        }
+      ]
+    },
+    "configuration": {
+      "properties": {
+        "switch-file.title": {
+          "type": "boolean",
+          "default": true,
+          "description": "show/hide next file command in editor's title"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "yarn run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "yarn run compile-tests && yarn run compile && yarn run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.78.0",
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@typescript-eslint/eslint-plugin": "^5.59.1",
+    "@typescript-eslint/parser": "^5.59.1",
+    "eslint": "^8.39.0",
+    "glob": "^8.1.0",
+    "mocha": "^10.2.0",
+    "typescript": "^5.0.4",
+    "ts-loader": "^9.4.2",
+    "webpack": "^5.81.0",
+    "webpack-cli": "^5.0.2",
+    "@vscode/test-electron": "^2.3.0"
+  }
+}
