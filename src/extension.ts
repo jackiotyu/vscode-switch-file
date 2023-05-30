@@ -52,20 +52,23 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     const handleSwitchFile = async () => {
-        let options: vscode.QuickPickItem[] = ['Next', 'Previous'].map((tag) => {
+        let baseOptions: vscode.QuickPickItem[] = ['Next', 'Previous'].map((tag) => {
             return {
                 label: tag,
                 detail: (tag === 'Next' ? '$(arrow-down)' : '$(arrow-up)') + ` Switch to ${tag} file`,
             };
         });
-        let res;
+        let options: vscode.QuickPickItem[] = baseOptions;
+        let res: vscode.QuickPickItem | undefined;
         while ((res = await vscode.window.showQuickPick<vscode.QuickPickItem>(options))) {
             let uri = getActiveUri();
-            if (!uri) break;
+            if (!uri || !res) break;
             if (res.label === 'Previous') {
                 await switchFile(uri, false);
+                options = [...baseOptions].reverse();
             } else {
                 await switchFile(uri, true);
+                options = baseOptions;
             }
         }
     };
