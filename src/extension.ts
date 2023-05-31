@@ -113,7 +113,7 @@ export function activate(context: vscode.ExtensionContext) {
         if(items === undefined) return;
         options.forEach(item => {
             let check = items!.some(row => row.label === item.label);
-            vscode.workspace.getConfiguration(EXT_NAME).update(item.label, check);
+            vscode.workspace.getConfiguration(EXT_NAME).update(item.label, check, vscode.ConfigurationTarget.Global);
         });
     };
 

@@ -69,12 +69,14 @@
         "switch-file.title": {
           "type": "boolean",
           "default": false,
-          "description": "show/hide next file command in editor's title"
+          "description": "show/hide next file command in editor's title",
+          "scope": "application"
         },
         "switch-file.statusBar": {
           "type": "boolean",
           "default": true,
-          "description": "show/hide switch file command in statusBar"
+          "description": "show/hide switch file command in statusBar",
+          "scope": "application"
         }
       }
     }
