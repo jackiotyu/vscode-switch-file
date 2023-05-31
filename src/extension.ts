@@ -7,6 +7,61 @@ export function activate(context: vscode.ExtensionContext) {
     const OPEN_FILE_TIPS = 'There currently no opened file. Please open a file first.';
     const PICK_SETTING_TIPS = 'Checked items to open, unchecked items to close';
 
+    class FolderFilesManager {
+        private _folderPath: string = '';
+        private _folderFiles: string[] = [];
+        private timer: NodeJS.Timeout | undefined;
+        private folderWatcher?: vscode.FileSystemWatcher;
+        constructor(context: vscode.ExtensionContext) {
+            context.subscriptions.push(
+                vscode.window.tabGroups.onDidChangeTabs(() => {
+                    clearTimeout(this.timer);
+                    this.timer = setTimeout(() => {
+                        if (!vscode.window.tabGroups.activeTabGroup.activeTab) {
+                            this._folderPath = '';
+                            this._folderFiles = [];
+                            this.folderWatcher?.dispose();
+                        } else {
+                            this.checkFolderFiles();
+                        }
+                    }, 30);
+                }),
+                this,
+            );
+        }
+        dispose = () => {
+            clearTimeout(this.timer);
+            this._folderFiles = [];
+            this._folderPath = '';
+            this.folderWatcher?.dispose();
+        };
+        createFolderWatcher() {
+            const folderPathPattern = new vscode.RelativePattern(vscode.Uri.file(this._folderPath), '**');
+            this.folderWatcher?.dispose();
+            this.folderWatcher = vscode.workspace.createFileSystemWatcher(folderPathPattern, false, false, false);
+            this.folderWatcher.onDidChange(this.checkFolderFiles);
+            this.folderWatcher.onDidCreate(this.checkFolderFiles);
+            this.folderWatcher.onDidDelete(this.checkFolderFiles);
+        }
+        set folderPath(value: string) {
+            let oldFolderPath = this._folderPath;
+            this._folderPath = value;
+            if (oldFolderPath !== value) {
+                this.checkFolderFiles();
+                this.createFolderWatcher();
+            }
+        }
+        get folderFiles() {
+            return this._folderFiles;
+        }
+        private checkFolderFiles = () => {
+            if (!this._folderPath) return;
+            this._folderFiles = getFolderFiles(this._folderPath);
+        };
+    }
+
+    const folderFilesManager = new FolderFilesManager(context);
+
     enum Command {
         next = 'switch-file.next',
         previous = 'switch-file.previous',
@@ -48,7 +103,8 @@ export function activate(context: vscode.ExtensionContext) {
         try {
             let filePath = uri.fsPath;
             let folderPath = getFolderPath(filePath);
-            let folderFiles = getFolderFiles(folderPath);
+            folderFilesManager.folderPath = folderPath;
+            let folderFiles = folderFilesManager.folderFiles;
             let curIndex = folderFiles.indexOf(filePath);
             folderFiles = folderFiles.filter((i) => i !== filePath);
             if (folderFiles.length === 0) return;
@@ -71,7 +127,7 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     const handleSwitchFile = async () => {
-        if(!getActiveUri()) {
+        if (!getActiveUri()) {
             return vscode.window.showErrorMessage(OPEN_FILE_TIPS);
         }
         let baseOptions: vscode.QuickPickItem[] = ['Next', 'Previous'].map((tag) => {
@@ -108,11 +164,11 @@ export function activate(context: vscode.ExtensionContext) {
         ];
         let items = await vscode.window.showQuickPick(options, {
             title: PICK_SETTING_TIPS,
-            canPickMany: true
+            canPickMany: true,
         });
-        if(items === undefined) return;
-        options.forEach(item => {
-            let check = items!.some(row => row.label === item.label);
+        if (items === undefined) return;
+        options.forEach((item) => {
+            let check = items!.some((row) => row.label === item.label);
             vscode.workspace.getConfiguration(EXT_NAME).update(item.label, check, vscode.ConfigurationTarget.Global);
         });
     };
@@ -179,7 +235,9 @@ export function activate(context: vscode.ExtensionContext) {
             this.toggleAll(show, true);
         }
     }
+
     new StatusBarManager(context);
+
     context.subscriptions.push(
         vscode.commands.registerCommand(Command.next, (uri?: vscode.Uri) => {
             uri = uri || getActiveUri();
