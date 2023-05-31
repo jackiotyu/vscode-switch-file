@@ -3,7 +3,7 @@
   "name": "switch-file",
   "displayName": "Switch File",
   "description": "Quick switch previous/next file",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "icon": "images/icon.png",
   "repository": {
     "type": "git",
@@ -59,6 +59,11 @@
           "type": "boolean",
           "default": false,
           "description": "show/hide next file command in editor's title"
+        },
+        "switch-file.statusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "show/hide switch file command in statusBar"
         }
       }
     }

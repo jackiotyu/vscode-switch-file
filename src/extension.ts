@@ -3,6 +3,19 @@ import fs from 'fs';
 import path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
+    const EXT_NAME = 'switch-file';
+
+    enum Command {
+        next = 'switch-file.next',
+        previous = 'switch-file.previous',
+        switchFile = 'switch-file.switchFile',
+    }
+
+    enum Direction {
+        next = 'next',
+        previous = 'previous',
+    }
+
     const getActiveUri = (): vscode.Uri | undefined => {
         return (
             vscode.window.activeTextEditor?.document.uri ||
@@ -73,20 +86,82 @@ export function activate(context: vscode.ExtensionContext) {
         }
     };
 
+    class StatusBarManager {
+        private previousBar: vscode.StatusBarItem;
+        private nextBar: vscode.StatusBarItem;
+        private readonly confName = EXT_NAME;
+        private readonly conf = 'statusBar';
+        private isShow: boolean = false;
+        private isActive: boolean = false;
+        private timer: NodeJS.Timeout | undefined;
+        constructor(context: vscode.ExtensionContext) {
+            this.nextBar = this.createBar(Command.next, Direction.next);
+            this.previousBar = this.createBar(Command.previous, Direction.previous);
+            this.checkActive();
+            this.checkCanShow();
+            context.subscriptions.push(
+                this.nextBar,
+                this.previousBar,
+                vscode.workspace.onDidChangeConfiguration((event) => {
+                    event.affectsConfiguration(this.confName) && this.checkActive();
+                }),
+                vscode.window.tabGroups.onDidChangeTabs(() => {
+                    clearTimeout(this.timer);
+                    if(!this.isActive) return;
+                    this.timer = setTimeout(() => {
+                        this.checkCanShow();
+                    }, 30);
+                }),
+            );
+        }
+        private createBar(id: string, direction: Direction = Direction.next) {
+            const isNext = direction === Direction.next;
+            let bar = vscode.window.createStatusBarItem(id, vscode.StatusBarAlignment.Left, isNext ? -101 : -100);
+            bar.command = {
+                command: isNext ? Command.next : Command.previous,
+                title: `switch ${direction} file`,
+            };
+            bar.text = isNext ? '$(arrow-right)' : `$(arrow-left)`;
+            bar.tooltip = `Switch ${direction} file`;
+            return bar;
+        }
+        private toggleAll(show = false) {
+            if(!this.isActive) return;
+            if(show === this.isShow) return;
+            if (show) {
+                this.nextBar.show();
+                this.previousBar.show();
+            } else {
+                this.nextBar.hide();
+                this.previousBar.hide();
+            }
+            this.isShow = show;
+        }
+        private checkCanShow(): void {
+            let uri = getActiveUri();
+            if (uri) return this.toggleAll(true);
+            this.toggleAll(false);
+        }
+        private checkActive() {
+            let show = vscode.workspace.getConfiguration(this.confName).get(this.conf);
+            this.isActive = !!show;
+            this.toggleAll(!!show);
+        }
+    }
+    new StatusBarManager(context);
     context.subscriptions.push(
-        vscode.commands.registerCommand('switch-file.next', (uri?: vscode.Uri) => {
+        vscode.commands.registerCommand(Command.next, (uri?: vscode.Uri) => {
             uri = uri || getActiveUri();
             if (!uri) return;
             switchFile(uri, true);
         }),
-        vscode.commands.registerCommand('switch-file.previous', (uri?: vscode.Uri) => {
+        vscode.commands.registerCommand(Command.previous, (uri?: vscode.Uri) => {
             uri = uri || getActiveUri();
             if (!uri) return;
             switchFile(uri, false);
         }),
-        vscode.commands.registerCommand('switch-file.switchFile', handleSwitchFile),
+        vscode.commands.registerCommand(Command.switchFile, handleSwitchFile),
     );
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() {}
