@@ -4,11 +4,14 @@ import path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
     const EXT_NAME = 'switch-file';
+    const OPEN_FILE_TIPS = 'There currently no opened file. Please open a file first.';
+    const PICK_SETTING_TIPS = 'Checked items to open, unchecked items to close';
 
     enum Command {
         next = 'switch-file.next',
         previous = 'switch-file.previous',
         switchFile = 'switch-file.switchFile',
+        toggleSetting = 'switch-file.toggleSetting',
     }
 
     enum Direction {
@@ -68,6 +71,9 @@ export function activate(context: vscode.ExtensionContext) {
     };
 
     const handleSwitchFile = async () => {
+        if(!getActiveUri()) {
+            return vscode.window.showErrorMessage(OPEN_FILE_TIPS);
+        }
         let baseOptions: vscode.QuickPickItem[] = ['Next', 'Previous'].map((tag) => {
             return {
                 label: tag,
@@ -87,6 +93,28 @@ export function activate(context: vscode.ExtensionContext) {
                 options = baseOptions;
             }
         }
+    };
+
+    const toggleSetting = async () => {
+        const options: vscode.QuickPickItem[] = [
+            {
+                label: 'title',
+                picked: vscode.workspace.getConfiguration(EXT_NAME).get('title'),
+            },
+            {
+                label: 'statusBar',
+                picked: vscode.workspace.getConfiguration(EXT_NAME).get('statusBar'),
+            },
+        ];
+        let items = await vscode.window.showQuickPick(options, {
+            title: PICK_SETTING_TIPS,
+            canPickMany: true
+        });
+        if(items === undefined) return;
+        options.forEach(item => {
+            let check = items!.some(row => row.label === item.label);
+            vscode.workspace.getConfiguration(EXT_NAME).update(item.label, check);
+        });
     };
 
     class StatusBarManager {
@@ -110,7 +138,7 @@ export function activate(context: vscode.ExtensionContext) {
                 }),
                 vscode.window.tabGroups.onDidChangeTabs(() => {
                     clearTimeout(this.timer);
-                    if(!this.isActive) return;
+                    if (!this.isActive) return;
                     this.timer = setTimeout(() => {
                         this.checkCanShow();
                     }, 30);
@@ -128,9 +156,9 @@ export function activate(context: vscode.ExtensionContext) {
             bar.tooltip = `Switch ${direction} file`;
             return bar;
         }
-        private toggleAll(show = false) {
-            if(!this.isActive) return;
-            if(show === this.isShow) return;
+        private toggleAll(show = false, forceUpdate = false) {
+            if (!this.isActive && !forceUpdate) return;
+            if (show === this.isShow) return;
             if (show) {
                 this.nextBar.show();
                 this.previousBar.show();
@@ -146,24 +174,25 @@ export function activate(context: vscode.ExtensionContext) {
             this.toggleAll(false);
         }
         private checkActive() {
-            let show = vscode.workspace.getConfiguration(this.confName).get(this.conf);
-            this.isActive = !!show;
-            this.toggleAll(!!show);
+            let show = !!vscode.workspace.getConfiguration(this.confName).get(this.conf);
+            this.isActive = show;
+            this.toggleAll(show, true);
         }
     }
     new StatusBarManager(context);
     context.subscriptions.push(
         vscode.commands.registerCommand(Command.next, (uri?: vscode.Uri) => {
             uri = uri || getActiveUri();
-            if (!uri) return;
+            if (!uri) return vscode.window.showErrorMessage(OPEN_FILE_TIPS);
             switchFile(uri, true);
         }),
         vscode.commands.registerCommand(Command.previous, (uri?: vscode.Uri) => {
             uri = uri || getActiveUri();
-            if (!uri) return;
+            if (!uri) return vscode.window.showErrorMessage(OPEN_FILE_TIPS);
             switchFile(uri, false);
         }),
         vscode.commands.registerCommand(Command.switchFile, handleSwitchFile),
+        vscode.commands.registerCommand(Command.toggleSetting, toggleSetting),
     );
 }
 

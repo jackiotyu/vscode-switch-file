@@ -3,7 +3,7 @@
   "name": "switch-file",
   "displayName": "Switch File",
   "description": "Quick switch previous/next file",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "icon": "images/icon.png",
   "repository": {
     "type": "git",
@@ -33,17 +33,21 @@
     "commands": [
       {
         "command": "switch-file.next",
-        "title": "Next file",
+        "title": "[ Switch File ]: Next File",
         "icon": "$(arrow-right)"
       },
       {
         "command": "switch-file.previous",
-        "title": "Previous file",
+        "title": "[ Switch File ]: Previous File",
         "icon": "$(arrow-left)"
       },
       {
         "command": "switch-file.switchFile",
-        "title": "Switch file"
+        "title": "[ Switch File ]: Open Command"
+      },
+      {
+        "command": "switch-file.toggleSetting",
+        "title": "[ Switch File ]: Toggle Setting"
       }
     ],
     "menus": {
