@@ -3,7 +3,7 @@
   "name": "switch-file",
   "displayName": "Switch File",
   "description": "Quick switch previous/next file",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "icon": "images/icon.png",
   "repository": {
     "type": "git",
@@ -18,6 +18,13 @@
   "categories": [
     "Other"
   ],
+  "keywords": [
+    "switch file",
+    "next/previous file",
+    "切换文件",
+    "上一个文件",
+    "下一个文件"
+],
   "activationEvents": [
     "onStartupFinished"
   ],

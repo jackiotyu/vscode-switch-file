@@ -35,6 +35,9 @@ export function activate(context: vscode.ExtensionContext) {
             .map((i) => path.join(folderPath, i))
             .filter((path) => {
                 return fs.statSync(path).isFile();
+            })
+            .sort((a, b) => {
+                return a.localeCompare(b);
             });
     };
 
