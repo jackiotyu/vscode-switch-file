@@ -33,21 +33,21 @@
     "commands": [
       {
         "command": "switch-file.next",
-        "title": "[ Switch File ]: Next File",
+        "title": "Switch File: Next File ⯆",
         "icon": "$(arrow-right)"
       },
       {
         "command": "switch-file.previous",
-        "title": "[ Switch File ]: Previous File",
+        "title": "Switch File: Previous File ⯅",
         "icon": "$(arrow-left)"
       },
       {
         "command": "switch-file.switchFile",
-        "title": "[ Switch File ]: Open Command"
+        "title": "Switch File: Open Command"
       },
       {
         "command": "switch-file.toggleSetting",
-        "title": "[ Switch File ]: Toggle Setting"
+        "title": "Switch File: Toggle Setting"
       }
     ],
     "menus": {

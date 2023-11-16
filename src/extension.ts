@@ -1,11 +1,19 @@
 import * as vscode from 'vscode';
-import fs from 'fs';
 import path from 'path';
+
+interface QuickPickItem extends vscode.QuickPickItem {
+    label: 'Next' | 'Previous'
+}
+
+interface ISiblingResult {
+    previous?: string;
+    next?: string;
+}
 
 export function activate(context: vscode.ExtensionContext) {
     const EXT_NAME = 'switch-file';
     const OPEN_FILE_TIPS = 'There currently no opened file. Please open a file first.';
-    const PICK_SETTING_TIPS = 'Checked items to open, unchecked items to close';
+    const PICK_SETTING_TIPS = 'Checked item(s) to open, unchecked item(s) to close';
 
     class FolderFilesManager {
         private _folderPath: string = '';
@@ -36,27 +44,29 @@ export function activate(context: vscode.ExtensionContext) {
             this.folderWatcher?.dispose();
         };
         createFolderWatcher() {
-            const folderPathPattern = new vscode.RelativePattern(vscode.Uri.file(this._folderPath), '**');
             this.folderWatcher?.dispose();
+            if (!this._folderPath) return;
+            const folderPathPattern = new vscode.RelativePattern(vscode.Uri.file(this._folderPath), '*');
             this.folderWatcher = vscode.workspace.createFileSystemWatcher(folderPathPattern, false, false, false);
             this.folderWatcher.onDidChange(this.checkFolderFiles);
             this.folderWatcher.onDidCreate(this.checkFolderFiles);
             this.folderWatcher.onDidDelete(this.checkFolderFiles);
         }
-        set folderPath(value: string) {
+        setFolderPath(value: string) {
             let oldFolderPath = this._folderPath;
             this._folderPath = value;
             if (oldFolderPath !== value) {
-                this.checkFolderFiles();
-                this.createFolderWatcher();
+                return this.checkFolderFiles();
             }
         }
         get folderFiles() {
             return this._folderFiles;
         }
-        private checkFolderFiles = () => {
+        private checkFolderFiles = async () => {
+            this.folderWatcher?.dispose();
             if (!this._folderPath) return;
-            this._folderFiles = getFolderFiles(this._folderPath);
+            this._folderFiles = await getFolderFiles(this._folderPath);
+            this.createFolderWatcher();
         };
     }
 
@@ -86,68 +96,82 @@ export function activate(context: vscode.ExtensionContext) {
         return path.dirname(filePath);
     };
 
-    const getFolderFiles = (folderPath: string) => {
+    const getFolderFiles = async (folderPath: string) => {
         if (!folderPath) return [];
-        let files = fs.readdirSync(folderPath, 'utf-8');
-        return files
-            .map((i) => path.join(folderPath, i))
-            .filter((path) => {
-                return fs.statSync(path).isFile();
-            })
-            .sort((a, b) => {
-                return a.localeCompare(b);
-            });
+        const files = await vscode.workspace.findFiles(
+            new vscode.RelativePattern(vscode.Uri.file(folderPath), '*'),
+        );
+        const collator = new Intl.Collator(undefined, { numeric: true });
+        return files.map((i) => i.fsPath).sort((a, b) => collator.compare(a, b));
     };
 
-    const switchFile = (uri: vscode.Uri, isNext: boolean = false) => {
+
+    const getSiblingFiles = async (uri: vscode.Uri): Promise<ISiblingResult> => {
+        let filePath = uri.fsPath;
+        await folderFilesManager.setFolderPath(getFolderPath(filePath));
+        let files = folderFilesManager.folderFiles;
+        let len = files.length;
+        if (len === 1) return {};
+        if (len === 2) {
+            let other = files.filter((i) => i !== filePath)[0];
+            return { previous: other, next: other };
+        }
+        let curIndex = files.findIndex((i) => i === filePath);
+        let previousIndex = curIndex === 0 ? files.length - 1 : curIndex - 1;
+        let nextIndex = curIndex === files.length - 1 ? 0 : curIndex + 1;
+        return {
+            previous: files[previousIndex],
+            next: files[nextIndex],
+        };
+    };
+
+    const switchFile = async (uri: vscode.Uri, isNext: boolean = false) => {
         try {
-            let filePath = uri.fsPath;
-            let folderPath = getFolderPath(filePath);
-            folderFilesManager.folderPath = folderPath;
-            let folderFiles = folderFilesManager.folderFiles;
-            let curIndex = folderFiles.indexOf(filePath);
-            folderFiles = folderFiles.filter((i) => i !== filePath);
-            if (folderFiles.length === 0) return;
-            let next;
-            if (curIndex === 0 && !isNext) {
-                next = folderFiles[folderFiles.length - 1];
-            } else if (curIndex === folderFiles.length && isNext) {
-                next = folderFiles[0];
-            } else {
-                next = isNext
-                    ? folderFiles.find((file) => file.localeCompare(filePath) > 0)
-                    : folderFiles.reverse().find((file) => file.localeCompare(filePath) <= 0);
-            }
-            if (!next) return;
-            let fileUri = vscode.Uri.file(next);
+            let { next, previous } = await getSiblingFiles(uri);
+            let nextItem = isNext ? next : previous;
+            if (!nextItem) return;
+            let fileUri = vscode.Uri.file(nextItem);
             return vscode.commands.executeCommand('vscode.open', fileUri);
         } catch (err) {
             console.log(err);
         }
     };
 
+    const buildOptions = async (uri: vscode.Uri) => {
+        const { next, previous } = await getSiblingFiles(uri);
+        const tagList = ['Next', 'Previous'] as const;
+        const options: QuickPickItem[] = tagList.map((tag) => {
+            const isNext = tag === 'Next';
+            const fileName = isNext ? next : previous;
+            const fileText = fileName ? fileName : '-';
+            return {
+                iconPath: new vscode.ThemeIcon(isNext ? 'arrow-down' : 'arrow-up'),
+                label: tag,
+                description: `${path.basename(fileName || '-')}`,
+                detail: ` Switch to: ${fileText}`,
+            };
+        });
+        return options;
+    };
+
     const handleSwitchFile = async () => {
         if (!getActiveUri()) {
             return vscode.window.showErrorMessage(OPEN_FILE_TIPS);
         }
-        let baseOptions: vscode.QuickPickItem[] = ['Next', 'Previous'].map((tag) => {
-            return {
-                label: tag,
-                detail: (tag === 'Next' ? '$(arrow-down)' : '$(arrow-up)') + ` Switch to ${tag} file`,
-            };
-        });
-        let options: vscode.QuickPickItem[] = baseOptions;
-        let res: vscode.QuickPickItem | undefined;
-        while ((res = await vscode.window.showQuickPick<vscode.QuickPickItem>(options))) {
-            let uri = getActiveUri();
+        let res: QuickPickItem | undefined;
+        let uri = getActiveUri();
+        if(!uri) return;
+        let options = await buildOptions(uri);
+        while ((res = await vscode.window.showQuickPick<QuickPickItem>(options))) {
+            uri = getActiveUri();
             if (!uri || !res) break;
-            if (res.label === 'Previous') {
-                await switchFile(uri, false);
-                options = [...baseOptions].reverse();
-            } else {
-                await switchFile(uri, true);
-                options = baseOptions;
-            }
+            const selectNext = res.label === 'Next';
+            await switchFile(uri, selectNext);
+            // next loop options
+            uri = getActiveUri();
+            if(!uri) break;
+            options = await buildOptions(uri);
+            if(!selectNext) options = options.reverse();
         }
     };
 
