@@ -4,6 +4,11 @@ All notable changes to the "switch-file" extension will be documented in this fi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.0.7]
+
+- Show filename in quick pick.
+- Use the same file collation as vscode
+
 ## [0.0.6]
 
 - Improve switch process by cache folder files.
